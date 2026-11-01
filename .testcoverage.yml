@@ -1,4 +1,4 @@
 # go-test-coverage keeps statement coverage at or above 90% for each package.
-profile: coverage.out
+profile: .cache/coverage.out
 threshold:
   package: 90

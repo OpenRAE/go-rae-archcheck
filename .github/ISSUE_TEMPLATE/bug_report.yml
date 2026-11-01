@@ -1,0 +1,25 @@
+name: Bug report
+description: Report wrong behavior of the checker.
+labels: [bug]
+body:
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Actual and expected behavior
+      description: What the checker did, and what it must do.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: The command, a minimal model and the Go files that show the problem.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The release or the commit of the checker.
+    validations:
+      required: true

@@ -4,7 +4,9 @@ on:
   push:
     branches: [main, dev]
   pull_request:
+    types: [opened, edited, synchronize, reopened]
     branches: [main, dev]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -18,29 +20,15 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - name: Install pinned tools
+        uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
         with:
-          go-version-file: go.mod
-      - name: Verify modules
-        run: go mod verify
-      - name: Vet
-        run: go vet ./...
-      - name: Lint
-        run: go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0 run ./...
-      - name: Known vulnerabilities
-        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
-      - name: Test
-        run: go test -race -shuffle=on -covermode=atomic -coverprofile=coverage.out ./...
-      - name: Coverage of at least 90% for each package
-        run: go run github.com/vladopajic/go-test-coverage/v2@v2.21.0 --config .testcoverage.yml
-      - name: Architecture
+          version: 2026.10.0
+          install: false
+      - run: make tools
+      - name: File hygiene, workflow and secret checks
+        run: make hygiene
+      - name: Run all checks
         env:
           BASE_REF: ${{ github.base_ref }}
-        run: |
-          if [ -n "$BASE_REF" ] && git cat-file -e "origin/$BASE_REF:architecture/model.yaml" 2>/dev/null; then
-            git show "origin/$BASE_REF:architecture/model.yaml" > "$RUNNER_TEMP/base-model.yaml"
-            git ls-tree --name-only "origin/$BASE_REF" architecture/designs/ > "$RUNNER_TEMP/base-designs.txt"
-            go run ./cmd/archcheck -base-model "$RUNNER_TEMP/base-model.yaml" -base-designs "$RUNNER_TEMP/base-designs.txt"
-          else
-            go run ./cmd/archcheck
-          fi
+        run: make ci-check
