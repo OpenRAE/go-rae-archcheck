@@ -19,6 +19,7 @@ archcheck
 ```
 
 [`docs/model.md`](docs/model.md) describes the model format, the checks and the command flags.
+[`docs/decisions`](docs/decisions/README.md) records the design decisions of the checker.
 This repository checks itself with its own model, `architecture/model.yaml`.
 
 ## Status

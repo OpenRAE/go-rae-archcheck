@@ -95,19 +95,22 @@ func parse(args []string, stderr io.Writer) (options, bool) {
 }
 
 // check returns the findings of the model, the design records and the code.
-// It checks the code only when the model has no defect.
+// It checks the semantics of the model only when the model meets the schema,
+// and the code only when the model has no defect.
 func check(ctx context.Context, opts options, fsys fs.FS, dir string) ([]finding.Finding, error) {
-	m, err := readModel(fsys, opts.model)
+	m, findings, err := readModel(fsys, opts.model)
 	if err != nil {
 		return nil, err
 	}
-	findings := model.Validate(m, opts.model)
+	if m != nil {
+		findings = append(findings, model.Validate(m, opts.model)...)
+	}
 	recordFindings, err := record.Check(fsys, opts.designs)
 	if err != nil {
 		return nil, err
 	}
 	findings = append(findings, recordFindings...)
-	if opts.baseModel != "" {
+	if m != nil && opts.baseModel != "" {
 		changeFindings, changeErr := checkChange(fsys, opts, m)
 		if changeErr != nil {
 			return nil, changeErr
@@ -134,9 +137,12 @@ func checkChange(fsys fs.FS, opts options, head *model.Model) ([]finding.Finding
 	if err != nil {
 		return nil, fmt.Errorf("read the base model: %w", err)
 	}
-	base, err := model.Parse(data)
+	base, baseFindings, err := model.Parse(data, opts.baseModel)
 	if err != nil {
 		return nil, fmt.Errorf("the base model: %w", err)
+	}
+	if len(baseFindings) > 0 {
+		return nil, fmt.Errorf("the base model breaks the schema: %s", baseFindings[0].Message)
 	}
 	listing, err := os.ReadFile(opts.baseDesigns)
 	if err != nil {
@@ -163,16 +169,18 @@ func baseNames(listing []byte) []string {
 	return names
 }
 
-func readModel(fsys fs.FS, name string) (*model.Model, error) {
+// readModel reads and parses the model. It returns no model, and the
+// findings, when the model breaks the schema.
+func readModel(fsys fs.FS, name string) (*model.Model, []finding.Finding, error) {
 	data, err := fs.ReadFile(fsys, name)
 	if err != nil {
-		return nil, fmt.Errorf("read the model: %w", err)
+		return nil, nil, fmt.Errorf("read the model: %w", err)
 	}
-	m, err := model.Parse(data)
+	m, findings, err := model.Parse(data, name)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", name, err)
+		return nil, nil, fmt.Errorf("%s: %w", name, err)
 	}
-	return m, nil
+	return m, findings, nil
 }
 
 // plural returns one when n is 1, and many otherwise.

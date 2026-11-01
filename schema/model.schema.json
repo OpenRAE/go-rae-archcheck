@@ -286,7 +286,8 @@
             "uniqueItems": true,
             "items": {
               "type": "string",
-              "pattern": "^[A-Za-z0-9._~/-]+\\.[A-Za-z_][A-Za-z0-9_]*$"
+              "pattern": "^([A-Za-z0-9._~/-]+\\.)?[A-Za-z_][A-Za-z0-9_]*$",
+              "description": "A builtin function, such as panic, or an exported symbol as importpath.Name."
             }
           },
           "fix": {

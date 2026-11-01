@@ -107,10 +107,8 @@ func parseFrontMatter(content []byte) (frontMatter, bool) {
 	if !ok {
 		return frontMatter{}, false
 	}
-	dec := yaml.NewDecoder(bytes.NewReader(block))
-	dec.KnownFields(true)
 	var meta frontMatter
-	if err := dec.Decode(&meta); err != nil {
+	if err := model.DecodeYAML(block, &meta); err != nil {
 		return frontMatter{}, false
 	}
 	return meta, true

@@ -19,12 +19,23 @@ system:
   id: m
   name: M
   description: A system.
+people: []
+external_systems: []
+relationships: []
+containers:
+  - id: app
+    name: App
+    technology: Go
+    description: The application.
 layers:
   - id: core
     directory: internal/core
     description: The core.
     uses: []
     external: []
+components: []
+test_modules: []
+rules: []
 `
 
 const fixtureRecord = "---\ndesign: 1\nissue: 1\ntitle: Start\n---\n"
@@ -57,7 +68,7 @@ func TestRunFindings(t *testing.T) {
 	if status != 1 {
 		t.Errorf("run() status = %d, want 1", status)
 	}
-	for _, want := range []string{"model: version is 9", "the file name is not NNNN-slug.md", "archcheck: 2 findings"} {
+	for _, want := range []string{`the value at "/version" breaks the schema`, "the file name is not NNNN-slug.md", "archcheck: 2 findings"} {
 		if !strings.Contains(stderr, want) {
 			t.Errorf("stderr = %q, want it to contain %q", stderr, want)
 		}
@@ -76,7 +87,7 @@ func TestRunErrors(t *testing.T) {
 		{name: "argument", args: []string{"extra"}, status: 2, stderr: "usage: archcheck"},
 		{name: "base model alone", args: []string{"-base-model", "x"}, status: 2, stderr: "usage: archcheck"},
 		{name: "missing model", fsys: fstest.MapFS{}, status: 1, stderr: "read the model"},
-		{name: "bad model", fsys: fstest.MapFS{"architecture/model.yaml": {Data: []byte("unknown: 1\n")}}, status: 1, stderr: "decode the model"},
+		{name: "bad model", fsys: fstest.MapFS{"architecture/model.yaml": {Data: []byte("version: [1\n")}}, status: 1, stderr: "decode the model"},
 		{name: "unreadable designs", fsys: fstest.MapFS{
 			"architecture/model.yaml": {Data: []byte(fixtureModel)},
 			"architecture/designs":    {Data: []byte("a file, not a directory")},

@@ -5,7 +5,6 @@ import (
 	"go/token"
 	"go/types"
 	"path"
-	"regexp"
 	"slices"
 	"strings"
 
@@ -14,16 +13,10 @@ import (
 	"github.com/OpenRAE/go-rae-archcheck/internal/finding"
 )
 
-// idPattern matches an identifier: lowercase ASCII words of letters and
-// digits, joined by single hyphens, that start with a letter.
-var idPattern = regexp.MustCompile(`^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$`)
-
-// directoryPattern matches a layer directory: lowercase slash-separated
-// segments of letters joined by single hyphens.
-var directoryPattern = regexp.MustCompile(`^[a-z]+(?:-[a-z]+)*(?:/[a-z]+(?:-[a-z]+)*)*$`)
-
-// Validate returns the defects of the model. Each finding names location,
-// the path of the model file.
+// Validate returns the defects of a model that meets the schema. It checks
+// only what the schema cannot express: unique identifiers across lists,
+// references, overlaps, cycles, Go paths and symbols, and the layers of
+// components. Each finding names location, the path of the model file.
 func Validate(m *Model, location string) []finding.Finding {
 	v := validator{model: m, location: location}
 	v.checkHeader()
@@ -48,56 +41,38 @@ func (v *validator) addf(format string, args ...any) {
 		Location: v.location,
 		Rule:     finding.Model,
 		Message:  fmt.Sprintf(format, args...),
-		Fix:      "Correct the model in a design step, and record the reason in a design record.",
+		Fix:      modelFix,
 	})
 }
 
+// modelFix is the fix of every model defect.
+const modelFix = "Correct the model in a design step, and record the reason in a design record."
+
 func (v *validator) checkHeader() {
-	if v.model.Version != Version {
-		v.addf("version is %d, and the only supported version is %d", v.model.Version, Version)
-	}
 	if err := module.CheckPath(v.model.Module); err != nil {
 		v.addf("the module path is not valid: %v", err)
 	}
-	if v.model.System.Name == "" || v.model.System.Description == "" {
-		v.addf("the system needs a name and a description")
-	}
 }
 
-// checkElements checks the identifiers of the C4 elements, which share one
-// namespace, and the required text of each element.
+// checkElements checks that the identifiers of the C4 elements, the
+// containers and the components, which share one namespace, are unique.
 func (v *validator) checkElements() {
 	seen := map[string]bool{}
-	claim := func(kind, id string) {
-		switch {
-		case !idPattern.MatchString(id):
-			v.addf("%s identifier %q must be lowercase words joined by hyphens", kind, id)
-		case seen[id]:
+	claim := func(id string) {
+		if seen[id] {
 			v.addf("identifier %q is used more than once", id)
 		}
 		seen[id] = true
 	}
-	claim("system", v.model.System.ID)
-	for _, e := range v.model.People {
-		claim("person", e.ID)
-		v.needText("person", e.ID, e.Name, e.Description)
-	}
-	for _, e := range v.model.ExternalSystems {
-		claim("external system", e.ID)
-		v.needText("external system", e.ID, e.Name, e.Description)
+	claim(v.model.System.ID)
+	for _, e := range slices.Concat(v.model.People, v.model.ExternalSystems) {
+		claim(e.ID)
 	}
 	for _, c := range v.model.Containers {
-		claim("container", c.ID)
-		v.needText("container", c.ID, c.Name, c.Description)
+		claim(c.ID)
 	}
 	for _, c := range v.model.Components {
-		claim("component", c.ID)
-	}
-}
-
-func (v *validator) needText(kind, id, name, description string) {
-	if name == "" || description == "" {
-		v.addf("%s %q needs a name and a description", kind, id)
+		claim(c.ID)
 	}
 }
 
@@ -112,9 +87,6 @@ func (v *validator) checkRelationships() {
 	for _, r := range v.model.Relationships {
 		if !ends[r.From] || !ends[r.To] || r.From == r.To {
 			v.addf("relationship %q -> %q must connect two different elements or containers", r.From, r.To)
-		}
-		if r.Description == "" {
-			v.addf("relationship %q -> %q needs a description", r.From, r.To)
 		}
 	}
 }
@@ -139,19 +111,10 @@ func (v *validator) checkLayers() {
 // checkLayer checks one layer against the identifiers and directories of
 // the layers before it, and then records its own.
 func (v *validator) checkLayer(l Layer, ids map[string]bool, dirs map[string]string) {
-	switch {
-	case !idPattern.MatchString(l.ID):
-		v.addf("layer identifier %q must be lowercase words joined by hyphens", l.ID)
-	case ids[l.ID]:
+	if ids[l.ID] {
 		v.addf("layer identifier %q is used more than once", l.ID)
 	}
 	ids[l.ID] = true
-	if l.Description == "" {
-		v.addf("layer %q needs a description", l.ID)
-	}
-	if !directoryPattern.MatchString(l.Directory) {
-		v.addf("layer %q has directory %q, which is not a clean relative path of lowercase words", l.ID, l.Directory)
-	}
 	for dir, other := range dirs {
 		if Within(l.Directory, dir) || Within(dir, l.Directory) {
 			v.addf("the directories of layers %q and %q overlap", other, l.ID)
@@ -170,8 +133,6 @@ func (v *validator) checkExternal(l Layer) {
 			v.addf("layer %q has external path %q, which is not an import path outside the standard library", l.ID, e.Path)
 		case seen[e.Path]:
 			v.addf("layer %q lists external path %q more than once", l.ID, e.Path)
-		case e.Reason == "":
-			v.addf("layer %q lists external path %q with no reason", l.ID, e.Path)
 		}
 		seen[e.Path] = true
 	}
@@ -219,19 +180,10 @@ func (v *validator) checkComponents() {
 // checkComponent checks one component against the known containers and
 // components.
 func (v *validator) checkComponent(c Component, containers, components map[string]bool) {
-	if len(c.Containers) == 0 {
-		v.addf("component %q names no container", c.ID)
-	}
 	for _, id := range c.Containers {
 		if !containers[id] {
 			v.addf("component %q names unknown container %q", c.ID, id)
 		}
-	}
-	if c.Description == "" {
-		v.addf("component %q needs a description", c.ID)
-	}
-	if len(c.Packages) == 0 {
-		v.addf("component %q owns no package", c.ID)
 	}
 	for _, p := range c.Packages {
 		v.checkPackagePattern(fmt.Sprintf("package %q of component %q", p, c.ID), p)
@@ -288,17 +240,13 @@ func (v *validator) component(id string) (Component, bool) {
 }
 
 func (v *validator) checkDependsOn(c Component, components map[string]bool) {
-	seen := map[string]bool{}
 	for _, d := range c.DependsOn {
 		switch {
 		case !components[d]:
 			v.addf("component %q depends on unknown component %q", c.ID, d)
 		case d == c.ID:
 			v.addf("component %q depends on itself", c.ID)
-		case seen[d]:
-			v.addf("component %q lists dependency %q more than once", c.ID, d)
 		}
-		seen[d] = true
 	}
 }
 
@@ -310,27 +258,17 @@ func (v *validator) checkPackagePattern(what, pattern string) {
 }
 
 func (v *validator) checkModuleList(what string, modules []string) {
-	seen := map[string]bool{}
 	for _, m := range modules {
 		if err := module.CheckPath(m); err != nil {
 			v.addf("%s %q is not valid: %v", what, m, err)
 		}
-		if seen[m] {
-			v.addf("%s %q is listed more than once", what, m)
-		}
-		seen[m] = true
 	}
 }
 
 func (v *validator) checkTestLists() {
 	v.checkModuleList("test module", v.model.TestModules)
-	seen := map[string]bool{}
 	for _, p := range v.model.TestSupport {
 		v.checkPackagePattern(fmt.Sprintf("test support package %q", p), p)
-		if seen[p] {
-			v.addf("test support package %q is listed more than once", p)
-		}
-		seen[p] = true
 	}
 }
 
@@ -341,13 +279,10 @@ func (v *validator) checkRules() {
 	}
 	ids := map[string]bool{}
 	for _, r := range v.model.Rules {
-		if !idPattern.MatchString(r.ID) || ids[r.ID] {
-			v.addf("rule identifier %q is not valid or is used more than once", r.ID)
+		if ids[r.ID] {
+			v.addf("rule identifier %q is used more than once", r.ID)
 		}
 		ids[r.ID] = true
-		if r.Description == "" || r.Fix == "" {
-			v.addf("rule %q needs a description and a fix", r.ID)
-		}
 		v.checkScope(r, layers)
 		v.checkForbids(r)
 	}
@@ -355,9 +290,6 @@ func (v *validator) checkRules() {
 
 // checkScope checks the layers and the excepted components of a rule.
 func (v *validator) checkScope(r Rule, layers map[string]bool) {
-	if len(r.Scope.Layers) == 0 {
-		v.addf("rule %q applies to no layer", r.ID)
-	}
 	for _, id := range r.Scope.Layers {
 		if !layers[id] {
 			v.addf("rule %q names unknown layer %q", r.ID, id)
@@ -371,9 +303,6 @@ func (v *validator) checkScope(r Rule, layers map[string]bool) {
 }
 
 func (v *validator) checkForbids(r Rule) {
-	if len(r.ForbidImports) == 0 && len(r.ForbidSymbols) == 0 {
-		v.addf("rule %q forbids nothing", r.ID)
-	}
 	for _, p := range r.ForbidImports {
 		if module.CheckImportPath(strings.TrimSuffix(p, "/...")) != nil {
 			v.addf("rule %q has invalid import pattern %q", r.ID, p)

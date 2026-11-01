@@ -13,10 +13,10 @@ import (
 	"io"
 
 	"go.yaml.in/yaml/v3"
-)
 
-// Version is the only format version that this package reads.
-const Version = 1
+	"github.com/OpenRAE/go-rae-archcheck/internal/finding"
+	"github.com/OpenRAE/go-rae-archcheck/schema"
+)
 
 // Model is the architecture model of a Go module.
 type Model struct {
@@ -130,20 +130,51 @@ type Scope struct {
 	TestFiles bool `yaml:"test_files"`
 }
 
-// Parse decodes a model. It rejects unknown fields and more than one YAML
-// document.
-func Parse(data []byte) (*Model, error) {
+// Parse decodes a model and validates it against the JSON schema of the
+// model format. It returns a finding for each value that breaks the schema,
+// with location as the path of the model file. It returns an error when the
+// data is not one YAML document.
+func Parse(data []byte, location string) (*Model, []finding.Finding, error) {
+	var document any
+	if err := DecodeYAML(data, &document); err != nil {
+		return nil, nil, fmt.Errorf("decode the model: %w", err)
+	}
+	violations, err := schema.Validate(document)
+	if err != nil {
+		return nil, nil, fmt.Errorf("validate the model: %w", err)
+	}
+	if len(violations) > 0 {
+		findings := make([]finding.Finding, len(violations))
+		for i, v := range violations {
+			findings[i] = finding.Finding{
+				Location: location,
+				Rule:     finding.Model,
+				Message:  fmt.Sprintf("the value at %q breaks the schema: %s", v.Location, v.Message),
+				Fix:      modelFix,
+			}
+		}
+		return nil, findings, nil
+	}
+	var m Model
+	if err := DecodeYAML(data, &m); err != nil {
+		return nil, nil, fmt.Errorf("decode the model: %w", err)
+	}
+	return &m, nil, nil
+}
+
+// DecodeYAML decodes one YAML document into v. Fields that a struct in v
+// does not declare fail, and a second document fails.
+func DecodeYAML(data []byte, v any) error {
 	dec := yaml.NewDecoder(bytes.NewReader(data))
 	dec.KnownFields(true)
-	var m Model
-	if err := dec.Decode(&m); err != nil {
-		return nil, fmt.Errorf("decode the model: %w", err)
+	if err := dec.Decode(v); err != nil {
+		return fmt.Errorf("decode the YAML document: %w", err)
 	}
 	var extra yaml.Node
 	if err := dec.Decode(&extra); !errors.Is(err, io.EOF) {
-		return nil, errors.New("decode the model: more than one YAML document")
+		return errors.New("decode the YAML document: more than one document")
 	}
-	return &m, nil
+	return nil
 }
 
 // Structure returns a copy of the model without its descriptive text: names,

@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+
+	"github.com/OpenRAE/go-rae-archcheck/internal/finding"
 )
 
 // validYAML is a small model that has no defect.
@@ -73,9 +75,9 @@ rules:
 
 func mustParse(t *testing.T, data string) *Model {
 	t.Helper()
-	m, err := Parse([]byte(data))
-	if err != nil {
-		t.Fatalf("Parse() error = %v", err)
+	m, findings, err := Parse([]byte(data), "model.yaml")
+	if err != nil || len(findings) != 0 {
+		t.Fatalf("Parse() = %v, %v, want a model", findings, err)
 	}
 	return m
 }
@@ -95,16 +97,92 @@ func TestParseErrors(t *testing.T) {
 		name string
 		data string
 	}{
-		{name: "unknown field", data: "version: 1\nunknown: true\n"},
-		{name: "two documents", data: "version: 1\n---\nversion: 1\n"},
-		{name: "wrong type", data: "version: one\n"},
+		{name: "two documents", data: validYAML + "---\nversion: 1\n"},
+		{name: "no document", data: ""},
+		{name: "syntax", data: "version: [1\n"},
+		{name: "value that JSON cannot hold", data: "version: .inf\n"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if _, err := Parse([]byte(tc.data)); err == nil {
+			if _, _, err := Parse([]byte(tc.data), "model.yaml"); err == nil {
 				t.Errorf("Parse(%q) error = nil, want an error", tc.data)
 			}
 		})
+	}
+}
+
+// TestParseSchema checks that the schema rejects each structural defect, at
+// the JSON pointer of the value.
+func TestParseSchema(t *testing.T) {
+	tests := []struct {
+		name     string
+		old      string
+		new      string
+		location string
+	}{
+		{"unknown field", "version: 1\n", "version: 1\nunknown: true\n", `""`},
+		{"version", "version: 1", "version: 2", `"/version"`},
+		{"version type", "version: 1", "version: one", `"/version"`},
+		{"module pattern", "module: example.com/shop", "module: Example.com/Shop!", `"/module"`},
+		{"system text", "  name: Shop\n", "  name: \"\"\n", `"/system/name"`},
+		{"element id", "id: buyer", "id: Buyer", `"/people/0/id"`},
+		{"element text", "    name: Bank\n", "    name: \"\"\n", `"/external_systems/0/name"`},
+		{"container text", "    name: Server\n", "    name: \"\"\n", `"/containers/0/name"`},
+		{"relationship text", "    description: Uses\n", "    description: \"\"\n", `"/relationships/0/description"`},
+		{"layer id", "id: core\n", "id: Core\n", `"/layers/1/id"`},
+		{"layer text", "    description: Rules of the shop.\n", "    description: \"\"\n", `"/layers/1/description"`},
+		{"layer directory", "directory: internal/core", "directory: internal/Core/", `"/layers/1/directory"`},
+		{"external reason", "        reason: Money values.\n", "        reason: \"\"\n", `"/layers/1/external/0/reason"`},
+		{"component no container", "containers: [server]", "containers: []", `"/components/0/containers"`},
+		{"component text", "    description: The cart.\n", "    description: \"\"\n", `"/components/0/description"`},
+		{"component no package", "packages: [example.com/shop/internal/core/cart]", "packages: []", `"/components/0/packages"`},
+		{"component dependency twice", "depends_on: []", "depends_on: [cart, cart]", `"/components/0/depends_on"`},
+		{"test module twice", "test_modules: [github.com/google/go-cmp]", "test_modules: [github.com/google/go-cmp, github.com/google/go-cmp]", `"/test_modules"`},
+		{"test support twice", "test_support: [example.com/shop/internal/core/coretest]", "test_support: [example.com/shop/internal/core/coretest, example.com/shop/internal/core/coretest]", `"/test_support"`},
+		{"rule id", "id: no-exec", "id: NoExec", `"/rules/0/id"`},
+		{"rule text", "    fix: Use an adapter job.\n", "    fix: \"\"\n", `"/rules/0/fix"`},
+		{"rule no layer", "layers: [core, adapter]", "layers: []", `"/rules/0/scope/layers"`},
+		{"rule symbol", "forbid_symbols: [os.StartProcess, panic]", "forbid_symbols: [\"os.Start Process\"]", `"/rules/0/forbid_symbols/0"`},
+		{"rule nothing", "    forbid_imports: [os/exec]\n    forbid_symbols: [os.StartProcess, panic]\n", "", `"/rules/0"`},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if !strings.Contains(validYAML, tc.old) {
+				t.Fatalf("validYAML does not contain %q", tc.old)
+			}
+			m, findings, err := Parse([]byte(strings.Replace(validYAML, tc.old, tc.new, 1)), "model.yaml")
+			if err != nil || m != nil {
+				t.Fatalf("Parse() = %v, %v, want schema findings and no model", m, err)
+			}
+			want := "the value at " + tc.location + " breaks the schema"
+			if !hasMessage(findings, want) {
+				t.Errorf("Parse() findings = %v, want one that contains %q", findings, want)
+			}
+		})
+	}
+}
+
+func TestParseSchemaFindingFields(t *testing.T) {
+	_, findings, err := Parse([]byte(strings.Replace(validYAML, "version: 1", "version: 2", 1)), "arch/model.yaml")
+	if err != nil || len(findings) != 1 {
+		t.Fatalf("Parse() = %v, %v, want one finding", findings, err)
+	}
+	if f := findings[0]; f.Location != "arch/model.yaml" || f.Rule != finding.Model || f.Fix == "" {
+		t.Errorf("finding = %+v, want the model location, the model rule and a fix", f)
+	}
+}
+
+func TestDecodeYAML(t *testing.T) {
+	var v struct {
+		Name string `yaml:"name"`
+	}
+	if err := DecodeYAML([]byte("name: a\n"), &v); err != nil || v.Name != "a" {
+		t.Errorf("DecodeYAML() = %v with %q, want no error and a", err, v.Name)
+	}
+	for _, data := range []string{"name: a\nother: b\n", "name: a\n---\nname: b\n", ""} {
+		if err := DecodeYAML([]byte(data), &v); err == nil {
+			t.Errorf("DecodeYAML(%q) error = nil, want an error", data)
+		}
 	}
 }
 
