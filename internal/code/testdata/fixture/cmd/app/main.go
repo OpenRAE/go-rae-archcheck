@@ -1,0 +1,12 @@
+// Command app is a fixture main package.
+package main
+
+import (
+	"fmt"
+
+	"example.com/fixture/internal/core"
+)
+
+func main() {
+	fmt.Println(core.Name())
+}

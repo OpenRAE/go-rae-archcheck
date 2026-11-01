@@ -1,0 +1,100 @@
+# The architecture model of go-rae-archcheck, which the checker also checks.
+version: 1
+module: github.com/OpenRAE/go-rae-archcheck
+
+system:
+  id: archcheck
+  name: go-rae-archcheck
+  description: Checks a Go module against its architecture model and its design records.
+
+people:
+  - id: developer
+    name: Developer
+    description: Runs the checker on a Go module, on a workstation or in CI.
+
+external_systems:
+  - id: go-command
+    name: Go command
+    description: Lists the packages of the checked module for golang.org/x/tools/go/packages.
+
+relationships:
+  - from: developer
+    to: checker
+    description: Runs
+    technology: Command line
+  - from: checker
+    to: go-command
+    description: Loads the packages of the checked module with
+    technology: go list
+
+containers:
+  - id: checker
+    name: archcheck
+    technology: Go
+    description: The archcheck command.
+
+layers:
+  - id: command
+    directory: cmd/archcheck
+    description: The archcheck main package, which reads the flags and prints the findings.
+    uses: [code, record, model, finding]
+    external: []
+  - id: code
+    directory: internal/code
+    description: Loads the packages of a module and checks them against a model.
+    uses: [model, finding]
+    external:
+      - path: golang.org/x/tools/go/packages
+        reason: The standard loader of Go packages with their types and test variants.
+      - path: golang.org/x/mod/modfile
+        reason: Reads the module path from the go.mod file.
+  - id: record
+    directory: internal/record
+    description: Checks the design records and the record rule for structural changes.
+    uses: [model, finding]
+    external:
+      - path: go.yaml.in/yaml/v3
+        reason: Decodes the front matter of each record and encodes model structures.
+  - id: model
+    directory: internal/model
+    description: Reads and validates an architecture model.
+    uses: [finding]
+    external:
+      - path: go.yaml.in/yaml/v3
+        reason: Decodes the model with known fields only.
+      - path: golang.org/x/mod/module
+        reason: Validates module and import paths.
+  - id: finding
+    directory: internal/finding
+    description: The finding type that every check returns.
+    uses: []
+    external: []
+
+components: []
+
+test_modules:
+  - github.com/google/go-cmp
+
+test_support: []
+
+rules:
+  - id: process-globals
+    description: >-
+      Root contexts, process exit and process arguments belong to the main
+      package only.
+    scope:
+      layers: [code, record, model, finding]
+      test_files: false
+    forbid_symbols: [context.Background, context.TODO, os.Exit, os.Args]
+    fix: Take the context or the arguments as a parameter from the main package.
+
+  - id: no-process-execution
+    description: >-
+      The checker starts no processes itself. The packages loader runs the go
+      command.
+    scope:
+      layers: [command, code, record, model, finding]
+      test_files: true
+    forbid_imports: [os/exec]
+    forbid_symbols: [os.StartProcess]
+    fix: Use a library, or let golang.org/x/tools/go/packages run the go command.

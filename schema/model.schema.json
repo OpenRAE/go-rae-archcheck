@@ -1,0 +1,345 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenRAE/go-rae-archcheck/schema/model.schema.json",
+  "title": "Architecture model, version 1",
+  "description": "The structure of an architecture model that go-rae-archcheck reads. A forbidden import, a forbidden symbol and an external entry each match the path itself. A pattern that ends in /... also matches every package below it, an external pattern never crosses into another module, and a match never extends a path segment. The checker adds the semantic rules that docs/model.md states.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "module",
+    "system",
+    "people",
+    "external_systems",
+    "relationships",
+    "containers",
+    "layers",
+    "components",
+    "test_modules",
+    "rules"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "module": {
+      "type": "string",
+      "pattern": "^[a-z0-9.-]+(/[A-Za-z0-9._-]+)+$"
+    },
+    "system": {
+      "$ref": "#/$defs/element"
+    },
+    "people": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/element"
+      }
+    },
+    "external_systems": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/element"
+      }
+    },
+    "relationships": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "from",
+          "to",
+          "description"
+        ],
+        "properties": {
+          "from": {
+            "$ref": "#/$defs/id"
+          },
+          "to": {
+            "$ref": "#/$defs/id"
+          },
+          "description": {
+            "$ref": "#/$defs/text"
+          },
+          "technology": {
+            "$ref": "#/$defs/text"
+          }
+        }
+      }
+    },
+    "containers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "technology",
+          "description"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/id"
+          },
+          "name": {
+            "$ref": "#/$defs/text"
+          },
+          "technology": {
+            "$ref": "#/$defs/text"
+          },
+          "description": {
+            "$ref": "#/$defs/text"
+          }
+        }
+      }
+    },
+    "layers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "directory",
+          "description",
+          "uses",
+          "external"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/id"
+          },
+          "directory": {
+            "type": "string",
+            "pattern": "^[a-z]+(-[a-z]+)*(/[a-z]+(-[a-z]+)*)*$"
+          },
+          "description": {
+            "$ref": "#/$defs/text"
+          },
+          "uses": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/$defs/id"
+            }
+          },
+          "external": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "path",
+                "reason"
+              ],
+              "properties": {
+                "path": {
+                  "$ref": "#/$defs/packagePattern"
+                },
+                "reason": {
+                  "$ref": "#/$defs/text"
+                }
+              }
+            }
+          },
+          "isolated": {
+            "type": "boolean",
+            "description": "Components in this layer must not depend on each other."
+          }
+        }
+      }
+    },
+    "components": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "containers",
+          "description",
+          "packages"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/id"
+          },
+          "containers": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/$defs/id"
+            },
+            "description": "The containers that run the component. The checker derives its layer from the directories of its packages."
+          },
+          "description": {
+            "$ref": "#/$defs/text"
+          },
+          "packages": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/$defs/packagePattern"
+            }
+          },
+          "depends_on": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/$defs/id"
+            }
+          },
+          "modules": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/$defs/importPath"
+            }
+          }
+        }
+      }
+    },
+    "test_modules": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/importPath"
+      }
+    },
+    "test_support": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/packagePattern"
+      },
+      "description": "Test support packages, such as shared fakes and conformance suites. Only test files and other test support packages import them."
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "description",
+          "scope",
+          "fix"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "forbid_imports"
+            ]
+          },
+          {
+            "required": [
+              "forbid_symbols"
+            ]
+          }
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/id"
+          },
+          "description": {
+            "$ref": "#/$defs/text"
+          },
+          "scope": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "layers",
+              "test_files"
+            ],
+            "properties": {
+              "layers": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "$ref": "#/$defs/id"
+                }
+              },
+              "test_files": {
+                "type": "boolean",
+                "description": "When true, the rule also applies to _test.go files and to the test support packages that the model lists."
+              }
+            }
+          },
+          "forbid_imports": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9.-]+(/[A-Za-z0-9._~-]+)*(/\\.\\.\\.)?$"
+            }
+          },
+          "forbid_symbols": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._~/-]+\\.[A-Za-z_][A-Za-z0-9_]*$"
+            }
+          },
+          "fix": {
+            "$ref": "#/$defs/text"
+          },
+          "except_components": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/$defs/id"
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "importPath": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9.-]+(/[A-Za-z0-9._~-]+)*$"
+    },
+    "element": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "description"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "$ref": "#/$defs/text"
+        },
+        "description": {
+          "$ref": "#/$defs/text"
+        }
+      }
+    },
+    "packagePattern": {
+      "type": "string",
+      "description": "A package import path, or a path that ends in /... for the package and every package below it.",
+      "pattern": "^[A-Za-z0-9.-]+(/[A-Za-z0-9._~-]+)*(/\\.\\.\\.)?$"
+    }
+  }
+}

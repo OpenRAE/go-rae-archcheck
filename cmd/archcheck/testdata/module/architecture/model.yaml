@@ -1,0 +1,27 @@
+version: 1
+module: example.com/module
+system:
+  id: fixture
+  name: Fixture
+  description: A fixture system.
+people: []
+external_systems: []
+relationships: []
+containers: []
+layers:
+  - id: core
+    directory: internal/core
+    description: The core layer.
+    uses: []
+    external: []
+components: []
+test_modules: []
+test_support: []
+rules:
+  - id: no-env
+    description: Code does not read the environment.
+    scope:
+      layers: [core]
+      test_files: false
+    forbid_symbols: [os.Getenv]
+    fix: Pass the value in.
