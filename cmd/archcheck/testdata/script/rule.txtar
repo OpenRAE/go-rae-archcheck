@@ -1,0 +1,59 @@
+# Code that breaks a rule fails with the finding, its fix and the count.
+! exec archcheck
+! stdout .
+stderr '^internal/core/core.go:6: no-env: use of os.Getenv breaks the rule'
+stderr '^\tfix: Pass the value in.$'
+stderr '^archcheck: 1 finding$'
+
+# Without the code check, the same module has no findings.
+exec archcheck -code=false
+stdout '^archcheck: no findings$'
+
+-- go.mod --
+module example.com/m
+
+go 1.27
+-- architecture/model.yaml --
+version: 1
+module: example.com/m
+system:
+  id: m
+  name: M
+  description: A system.
+people: []
+external_systems: []
+relationships: []
+containers:
+  - id: app
+    name: App
+    technology: Go
+    description: The application.
+layers:
+  - id: core
+    directory: internal/core
+    description: The core.
+    uses: []
+    external: []
+components: []
+test_modules: []
+rules:
+  - id: no-env
+    description: The core reads no environment variable.
+    scope:
+      layers: [core]
+      test_files: false
+    forbid_symbols: [os.Getenv]
+    fix: Pass the value in.
+-- architecture/designs/0001-start.md --
+---
+design: 1
+issue: 1
+title: Start
+---
+-- internal/core/core.go --
+package core
+
+import "os"
+
+// Name returns the name from the environment.
+func Name() string { return os.Getenv("NAME") }

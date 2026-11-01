@@ -119,6 +119,7 @@ components:
 
 test_modules:
   - github.com/google/go-cmp
+  - github.com/rogpeppe/go-internal
 
 test_support: []
 
