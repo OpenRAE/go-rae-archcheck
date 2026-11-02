@@ -7,7 +7,11 @@ system:
 people: []
 external_systems: []
 relationships: []
-containers: []
+containers:
+  - id: app
+    name: App
+    technology: Go
+    description: The application.
 layers:
   - id: core
     directory: internal/core

@@ -54,23 +54,68 @@ layers:
     uses: [model, finding]
     external:
       - path: go.yaml.in/yaml/v3
-        reason: Decodes the front matter of each record and encodes model structures.
+        reason: Encodes model structures for the comparison of two models.
   - id: model
     directory: internal/model
-    description: Reads and validates an architecture model.
-    uses: [finding]
+    description: Reads an architecture model and checks the rules that its schema cannot express.
+    uses: [schema, finding]
     external:
       - path: go.yaml.in/yaml/v3
         reason: Decodes the model with known fields only.
       - path: golang.org/x/mod/module
         reason: Validates module and import paths.
+  - id: schema
+    directory: schema
+    description: The JSON schema of the model format and the validation of a model against it.
+    uses: []
+    external:
+      - path: github.com/santhosh-tekuri/jsonschema/v6
+        reason: A JSON Schema 2020-12 validator that generates no code, for the structure of each model.
+      - path: golang.org/x/text/language
+        reason: The language of the messages of the schema validator.
+      - path: golang.org/x/text/message
+        reason: The message printer that the schema validator uses for its messages.
   - id: finding
     directory: internal/finding
     description: The finding type that every check returns.
     uses: []
     external: []
 
-components: []
+components:
+  - id: command
+    containers: [checker]
+    description: Reads the flags, runs the checks and prints the findings.
+    packages: [github.com/OpenRAE/go-rae-archcheck/cmd/archcheck]
+    depends_on: [code, record, model, finding]
+  - id: code
+    containers: [checker]
+    description: Loads the packages of a module and checks them against a model.
+    packages: [github.com/OpenRAE/go-rae-archcheck/internal/code]
+    depends_on: [model, finding]
+    modules: [golang.org/x/tools, golang.org/x/mod]
+  - id: record
+    containers: [checker]
+    description: Checks the design records and the record rule for structural changes.
+    packages: [github.com/OpenRAE/go-rae-archcheck/internal/record]
+    depends_on: [model, finding]
+    modules: [go.yaml.in/yaml/v3]
+  - id: model
+    containers: [checker]
+    description: Reads a model and checks its semantic rules.
+    packages: [github.com/OpenRAE/go-rae-archcheck/internal/model]
+    depends_on: [schema, finding]
+    modules: [go.yaml.in/yaml/v3, golang.org/x/mod]
+  - id: schema
+    containers: [checker]
+    description: Validates a model against the JSON schema of the format.
+    packages: [github.com/OpenRAE/go-rae-archcheck/schema]
+    depends_on: []
+    modules: [github.com/santhosh-tekuri/jsonschema/v6, golang.org/x/text]
+  - id: finding
+    containers: [checker]
+    description: The finding type that every check returns.
+    packages: [github.com/OpenRAE/go-rae-archcheck/internal/finding]
+    depends_on: []
 
 test_modules:
   - github.com/google/go-cmp

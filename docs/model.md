@@ -26,15 +26,17 @@ The model is a YAML file, by default `architecture/model.yaml`, that describes o
 
 ## Model checks
 
-The checker rejects unknown fields and a second YAML document. It then checks these rules:
+The model must be one YAML document that meets the JSON schema.
+The schema states the fields, their types and patterns, the required text, the unique list items and the forbidden lists of each rule.
+The checker reports each value that breaks the schema at its JSON pointer, and then it checks these rules:
 
-- Identifiers are lowercase words joined by hyphens, and each one is unique.
-- Each reference names a known element, container, layer or component.
+- Each identifier is unique, and each reference names a known element, container, layer or component.
 - No layer directory contains another, and the layer uses and the component dependencies have no cycle.
-- External entries name packages outside the standard library, each with a reason.
+- The module path, the package patterns and the forbidden imports are valid Go paths.
+- External entries name packages outside the standard library.
 - The packages of a component sit in one layer, and no two components own the same package.
 - A component in an isolated layer depends on no other component of that layer.
-- Each rule forbids something, names its layers and states a description and a fix.
+- Each forbidden symbol is a builtin function or an exported name.
 
 ## Code checks
 
