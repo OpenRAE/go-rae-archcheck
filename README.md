@@ -24,6 +24,12 @@ This repository checks itself with its own model, `architecture/model.yaml`.
 ## Status
 
 The first release is in development.
+[Issue 3](https://github.com/OpenRAE/go-rae-archcheck/issues/3) lists the standard that the checker meets before that release.
+
+## Contribute
+
+[`CONTRIBUTING.md`](CONTRIBUTING.md) describes the setup, the checks and the standards.
+Report a vulnerability as [`SECURITY.md`](SECURITY.md) states, and follow the [code of conduct](CODE_OF_CONDUCT.md).
 
 ## License
 
