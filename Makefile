@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help tools hygiene lint security test regression arch prose ci-check
+.PHONY: help tools hygiene lint security test fuzz regression arch prose ci-check
 
 MISE ?= mise
 GO = $(MISE) exec -- go
@@ -10,7 +10,7 @@ COVERAGE = .cache/bin/go-test-coverage
 REGRESSIONTEST = .cache/bin/regressiontest
 
 help:
-	@echo 'Checks: make lint, make security, make test, make regression, make arch, make prose, make hygiene'
+	@echo 'Checks: make lint, make security, make test, make fuzz, make regression, make arch, make prose, make hygiene'
 	@echo 'All checks, as CI runs them: make ci-check'
 
 tools:
@@ -61,6 +61,12 @@ test: $(COVERAGE)
 	$(GO) test -race -shuffle=on -covermode=atomic -coverprofile=.cache/coverage.out ./...
 	$(COVERAGE) --config .testcoverage.yml
 
+# Each fuzz target of the parsers runs for a short time. A failing input lands in testdata/fuzz,
+# and the fix commits it as a regression seed.
+fuzz:
+	$(GO) test -run='^$$' -fuzz='^FuzzParse$$' -fuzztime=15s ./internal/model
+	$(GO) test -run='^$$' -fuzz='^FuzzParseFrontMatter$$' -fuzztime=15s ./internal/record
+
 # Each new TestRegression test in a *_regression_test.go file must fail on the base revision.
 regression: $(REGRESSIONTEST)
 	$(MISE) exec -- $(CURDIR)/$(REGRESSIONTEST) -base "origin/$${BASE_REF:-dev}"
@@ -78,4 +84,4 @@ arch:
 prose:
 	$(MISE) exec -- vale $$(git ls-files '*.md' ':!:**/testdata/**')
 
-ci-check: lint security test regression arch prose
+ci-check: lint security test fuzz regression arch prose
