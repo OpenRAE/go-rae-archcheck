@@ -30,6 +30,9 @@ jobs:
       - run: make tools
       - name: File hygiene, workflow and secret checks
         run: make hygiene
+      - name: Pull request body
+        if: github.event_name == 'pull_request'
+        run: mise exec -- uv run --locked --no-build python scripts/check_pr_body.py
       - name: Run all checks
         env:
           # A merge group has no pull request, so it gives its base commit.
@@ -39,7 +42,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: coverage
-          path: .cache/coverage.out
+          path: |
+            .cache/coverage.out
+            .cache/python-coverage.xml
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 1
