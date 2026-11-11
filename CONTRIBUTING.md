@@ -56,5 +56,11 @@ Keep `.env` and the local `.gc` artifacts out of Git.
 The issue thread holds the plan and review records.
 You review and merge the pull request after the checks pass.
 
-This repository has no automatic Ground Control completion workflow.
-Run `/implement` with the same issue number after the merge to record completion.
+Pull requests to `dev` merge through the merge queue.
+The queue merges a pull request only when each required check passes on its merge group.
+After the merge, the `Ground Control Phase E` workflow records the outcome and closes the issue.
+
+CI also runs these Ground Control gates:
+
+- The `SonarCloud` job analyzes the code and waits for the quality gate.
+- The `GitGuardian Security Checks` job scans the commits of each pull request and merge group for secrets.

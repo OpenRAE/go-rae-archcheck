@@ -22,3 +22,6 @@ docs:
 example_paths:
   source: internal/model/model.go
   test: internal/model/model_test.go
+sonarcloud:
+  project_key: OpenRAE_go-rae-archcheck
+  organization: raesystem
