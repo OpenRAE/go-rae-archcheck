@@ -1,5 +1,5 @@
 # A module that meets its model has no findings, and the command succeeds.
-exec archcheck
+exitcode 0 archcheck
 stdout '^archcheck: no findings$'
 ! stderr .
 

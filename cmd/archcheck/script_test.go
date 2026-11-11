@@ -1,8 +1,10 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/rogpeppe/go-internal/testscript"
@@ -27,6 +29,9 @@ func TestScripts(t *testing.T) {
 	}
 	testscript.Run(t, testscript.Params{
 		Dir: "testdata/script",
+		Cmds: map[string]func(*testscript.TestScript, bool, []string){
+			"exitcode": checkExitCode,
+		},
 		Setup: func(env *testscript.Env) error {
 			env.Setenv("GOCACHE", cache)
 			env.Setenv("GOPATH", filepath.Join(env.WorkDir, ".gopath"))
@@ -35,4 +40,26 @@ func TestScripts(t *testing.T) {
 			return nil
 		},
 	})
+}
+
+// checkExitCode preserves the command output and checks its exact exit status.
+func checkExitCode(ts *testscript.TestScript, neg bool, args []string) {
+	if neg || len(args) < 2 {
+		ts.Fatalf("usage: exitcode status command [args...]")
+	}
+	want, err := strconv.Atoi(args[0])
+	if err != nil || want < 0 || want > 255 {
+		ts.Fatalf("invalid exit status %q", args[0])
+	}
+	got := 0
+	if err := ts.Exec(args[1], args[2:]...); err != nil {
+		var status interface{ ExitCode() int }
+		if !errors.As(err, &status) {
+			ts.Fatalf("run command: %v", err)
+		}
+		got = status.ExitCode()
+	}
+	if got != want {
+		ts.Fatalf("exit status: got %d, want %d", got, want)
+	}
 }

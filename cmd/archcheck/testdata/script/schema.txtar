@@ -1,5 +1,5 @@
 # A model that breaks the schema fails at the JSON pointer of the value.
-! exec archcheck
+exitcode 1 archcheck
 stderr '^architecture/model.yaml: model: the value at "/version" breaks the schema'
 stderr '^archcheck: 1 finding$'
 

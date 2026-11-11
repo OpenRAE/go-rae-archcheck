@@ -3,7 +3,7 @@ exec archcheck -model arch/model.yaml -designs arch/designs
 stdout '^archcheck: no findings$'
 
 # The default paths do not exist in this module.
-! exec archcheck
+exitcode 1 archcheck
 stderr 'read the model'
 
 -- go.mod --

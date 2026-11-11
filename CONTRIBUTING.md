@@ -37,3 +37,21 @@ Run `make help` for the individual checks.
 
 Fill in each section of the pull request template.
 CI must pass before a merge.
+
+## Use Ground Control
+
+The optional Ground Control workflow uses `.ground-control.yaml` for this repository.
+It targets `dev` and uses the existing Make checks and pre-commit hooks.
+The `.mcp.json` file starts the installed `grndctl mcp` server.
+
+1. Install Ground Control through your approved setup.
+2. Set up the local `.env` file with the credentials for this repository.
+3. Restart your agent session to load the MCP server.
+4. Run `/implement` with the GitHub issue number.
+
+Keep `.env` and the local `.gc` artifacts out of Git.
+The issue thread holds the plan and review records.
+You review and merge the pull request after the checks pass.
+
+This repository has no automatic Ground Control completion workflow.
+Run `/implement` with the same issue number after the merge to record completion.
