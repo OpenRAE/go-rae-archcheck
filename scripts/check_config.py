@@ -46,14 +46,11 @@ def main() -> None:
     assert owner == "OpenRAE"
     assert config["sonarcloud"]["organization"] == "raesystem"
     assert config["sonarcloud"]["analysis_check"] == "SonarCloud"
-    properties = {
-        key: value
-        for key, value in (
-            line.split("=", maxsplit=1)
-            for line in (ROOT / "sonar-project.properties").read_text(encoding="utf-8").splitlines()
-            if line and not line.startswith("#")
-        )
-    }
+    properties = {}
+    for line in (ROOT / "sonar-project.properties").read_text(encoding="utf-8").splitlines():
+        if line and not line.startswith("#"):
+            key, value = line.split("=", maxsplit=1)
+            properties[key] = value
     assert properties["sonar.projectKey"] == config["sonarcloud"]["project_key"]
     assert properties["sonar.organization"] == config["sonarcloud"]["organization"]
     assert (ROOT / config["rules"]["plan_rules"]).is_file()
