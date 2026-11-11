@@ -4,11 +4,11 @@
 
 ## Related Issues
 
-<!-- Link an issue, for example: Closes #123 or Refs #123. -->
+<!-- Link an issue, for example: Closes #123 or Refs #123. Write None if there is no linked issue. -->
 
-## Decision Records
+## ADR Impact
 
-<!-- Cite the affected decision records and design records, or write: No record required. -->
+<!-- Cite the affected decision records and design records, or write: No ADR required. -->
 
 ## Design and Review
 

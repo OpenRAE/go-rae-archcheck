@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help tools hygiene lint security test fuzz regression arch prose ci-check
+.PHONY: help tools hygiene lint security test fuzz regression arch prose gc ci-check
 
 MISE ?= mise
 GO = $(MISE) exec -- go
@@ -10,7 +10,7 @@ COVERAGE = .cache/bin/go-test-coverage
 REGRESSIONTEST = .cache/bin/regressiontest
 
 help:
-	@echo 'Checks: make lint, make security, make test, make fuzz, make regression, make arch, make prose, make hygiene'
+	@echo 'Checks: make lint, make security, make test, make fuzz, make regression, make arch, make prose, make gc, make hygiene'
 	@echo 'All checks, as CI runs them: make ci-check'
 
 tools:
@@ -85,4 +85,11 @@ arch:
 prose:
 	$(MISE) exec -- vale $$(git ls-files '*.md' ':!:**/testdata/**')
 
-ci-check: lint security test fuzz regression arch prose
+# The Ground Control configuration check and the tests of the repository scripts.
+gc:
+	mkdir -p .cache
+	$(MISE) exec -- uv run --locked --no-build python scripts/check_config.py
+	$(MISE) exec -- uv run --locked --no-build coverage run --source=scripts -m unittest discover -s tests
+	$(MISE) exec -- uv run --locked --no-build coverage xml -o .cache/python-coverage.xml
+
+ci-check: lint security test fuzz regression arch prose gc

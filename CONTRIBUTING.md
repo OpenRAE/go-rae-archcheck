@@ -18,7 +18,7 @@ Contributions are welcome when they keep the checker generic, tested and documen
 
 ## Check a change
 
-`make ci-check` runs every check that CI runs: lint, security, tests, fuzzing, regression proof, the self-check and prose.
+`make ci-check` runs every check that CI runs: lint, security, tests, fuzzing, regression proof, the self-check, prose and the Ground Control checks.
 `make hygiene` runs the file hygiene, workflow and secret hooks on every file.
 Run `make help` for the individual checks.
 

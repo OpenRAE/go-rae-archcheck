@@ -6,6 +6,7 @@ package schema
 
 import (
 	"bytes"
+	// The go:embed directive below needs the embed package.
 	_ "embed"
 	"encoding/json"
 	"errors"

@@ -1,0 +1,8 @@
+{
+  "name": "go-rae-archcheck-ground-control",
+  "private": true,
+  "description": "The locked Ground Control finalizer for the Phase E workflow.",
+  "dependencies": {
+    "grndctl": "1.2.1"
+  }
+}

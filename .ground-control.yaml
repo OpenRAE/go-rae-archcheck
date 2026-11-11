@@ -25,3 +25,6 @@ example_paths:
 sonarcloud:
   project_key: OpenRAE_go-rae-archcheck
   organization: raesystem
+  analysis_check: SonarCloud
+rules:
+  plan_rules: .gc/plan_rules.md
