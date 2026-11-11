@@ -25,7 +25,8 @@ This repository checks itself with its own model, `architecture/model.yaml`.
 ## Status
 
 The first release is in development.
-[Issue 3](https://github.com/OpenRAE/go-rae-archcheck/issues/3) lists the standard that the checker meets before that release.
+[Issue 3](https://github.com/OpenRAE/go-rae-archcheck/issues/3) records the engineering checks and workflow setup.
+[Issue 9](https://github.com/OpenRAE/go-rae-archcheck/issues/9) adds mutation testing after the first Gremlins fork release.
 
 ## Contribute
 

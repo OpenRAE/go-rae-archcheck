@@ -1,9 +1,9 @@
 # A usage error prints the usage and fails.
-! exec archcheck extra
+exitcode 2 archcheck extra
 stderr '^usage: archcheck'
-! exec archcheck -base-model base.yaml
+exitcode 2 archcheck -base-model base.yaml
 stderr '^usage: archcheck'
-! exec archcheck -unknown
+exitcode 2 archcheck -unknown
 stderr 'flag provided but not defined: -unknown'
 
 -- go.mod --

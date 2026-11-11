@@ -1,5 +1,5 @@
 # Code that breaks a rule fails with the finding, its fix and the count.
-! exec archcheck
+exitcode 1 archcheck
 ! stdout .
 stderr '^internal/core/core.go:6: no-env: use of os.Getenv breaks the rule'
 stderr '^\tfix: Pass the value in.$'

@@ -1,5 +1,5 @@
 # A structural change since the base model needs a new design record.
-! exec archcheck -code=false -base-model base/model.yaml -base-designs base/designs.txt
+exitcode 1 archcheck -code=false -base-model base/model.yaml -base-designs base/designs.txt
 stderr 'adds no design record'
 stderr '^archcheck: 1 finding$'
 

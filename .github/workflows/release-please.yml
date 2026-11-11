@@ -1,0 +1,29 @@
+name: Release Please
+
+# Release Please owns the version and CHANGELOG.md. On each push to `main`, it
+# keeps a release PR up to date from the Conventional Commit history. A merge of
+# that PR creates the vX.Y.Z tag and the GitHub release.
+# sync-main-to-dev.yml then opens the back-merge PR from `main` into `dev`.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

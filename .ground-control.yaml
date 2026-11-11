@@ -1,0 +1,27 @@
+schema_version: 1
+project: go-rae-archcheck
+github_repo: OpenRAE/go-rae-archcheck
+workflow:
+  base_branch: dev
+  test_command: make test
+  completion_command: make ci-check
+  lint_command: make lint
+  policy_command: make arch
+  precommit_command: mise exec -- uv run --locked --no-build pre-commit run --hook-stage pre-commit
+  codex_review:
+    pre_push_cap: 1
+  pr_title:
+    types: [feat, fix, docs, chore, refactor, test, build, ci, perf, style, revert]
+    require_scope: false
+    subject_pattern: '^[a-z].*$'
+docs:
+  adr_dir: docs/decisions/
+  architecture_overview: docs/model.md
+  coding_standards: CONTRIBUTING.md
+  workflow_reference: CONTRIBUTING.md
+example_paths:
+  source: internal/model/model.go
+  test: internal/model/model_test.go
+sonarcloud:
+  project_key: OpenRAE_go-rae-archcheck
+  organization: raesystem

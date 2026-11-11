@@ -37,3 +37,30 @@ Run `make help` for the individual checks.
 
 Fill in each section of the pull request template.
 CI must pass before a merge.
+
+Release Please makes each release from the Conventional Commit history on `main`.
+It writes the version and `CHANGELOG.md`, so do not edit them in a pull request.
+
+## Use Ground Control
+
+The optional Ground Control workflow uses `.ground-control.yaml` for this repository.
+It targets `dev` and uses the existing Make checks and pre-commit hooks.
+The `.mcp.json` file starts the installed `grndctl mcp` server.
+
+1. Install Ground Control through your approved setup.
+2. Set up the local `.env` file with the credentials for this repository.
+3. Restart your agent session to load the MCP server.
+4. Run `/implement` with the GitHub issue number.
+
+Keep `.env` and the local `.gc` artifacts out of Git.
+The issue thread holds the plan and review records.
+You review and merge the pull request after the checks pass.
+
+Pull requests to `dev` merge through the merge queue.
+The queue merges a pull request only when each required check passes on its merge group.
+After the merge, the `Ground Control Phase E` workflow records the outcome and closes the issue.
+
+CI also runs these Ground Control gates:
+
+- The `SonarCloud` job analyzes the code and waits for the quality gate.
+- The `GitGuardian Security Checks` job scans the commits of each pull request and merge group for secrets.
