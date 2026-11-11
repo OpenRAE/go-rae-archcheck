@@ -1,2 +1,5 @@
 /.cache/
 /.venv/
+.env
+.mcp.json
+.ground-control.yaml
