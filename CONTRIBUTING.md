@@ -38,6 +38,9 @@ Run `make help` for the individual checks.
 Fill in each section of the pull request template.
 CI must pass before a merge.
 
+Release Please makes each release from the Conventional Commit history on `main`.
+It writes the version and `CHANGELOG.md`, so do not edit them in a pull request.
+
 ## Use Ground Control
 
 The optional Ground Control workflow uses `.ground-control.yaml` for this repository.
