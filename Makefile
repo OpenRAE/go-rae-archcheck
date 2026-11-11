@@ -67,16 +67,17 @@ fuzz:
 	$(GO) test -run='^$$' -fuzz='^FuzzParse$$' -fuzztime=15s ./internal/model
 	$(GO) test -run='^$$' -fuzz='^FuzzParseFrontMatter$$' -fuzztime=15s ./internal/record
 
+# BASE_REV is the git revision of the base, for example origin/dev or a commit.
 # Each new TestRegression test in a *_regression_test.go file must fail on the base revision.
 regression: $(REGRESSIONTEST)
-	$(MISE) exec -- $(CURDIR)/$(REGRESSIONTEST) -base "origin/$${BASE_REF:-dev}"
+	$(MISE) exec -- $(CURDIR)/$(REGRESSIONTEST) -base "$${BASE_REV:-origin/dev}"
 
-# The checker checks its own model, records and code. With a base branch, a structural change
+# The checker checks its own model, records and code. With a base revision, a structural change
 # of the model needs a new design record.
 arch:
-	@mkdir -p .cache; if [ -n "$$BASE_REF" ] && git cat-file -e "origin/$$BASE_REF:architecture/model.yaml" 2>/dev/null; then \
-		git show "origin/$$BASE_REF:architecture/model.yaml" > .cache/base-model.yaml; \
-		git ls-tree --name-only "origin/$$BASE_REF" architecture/designs/ > .cache/base-designs.txt; \
+	@mkdir -p .cache; if [ -n "$$BASE_REV" ] && git cat-file -e "$$BASE_REV:architecture/model.yaml" 2>/dev/null; then \
+		git show "$$BASE_REV:architecture/model.yaml" > .cache/base-model.yaml; \
+		git ls-tree --name-only "$$BASE_REV" architecture/designs/ > .cache/base-designs.txt; \
 		$(GO) run ./cmd/archcheck -base-model .cache/base-model.yaml -base-designs .cache/base-designs.txt; \
 	else $(GO) run ./cmd/archcheck; fi
 

@@ -6,6 +6,8 @@ on:
   pull_request:
     types: [opened, edited, synchronize, reopened]
     branches: [main, dev]
+  merge_group:
+    types: [checks_requested]
   workflow_dispatch:
 
 permissions:
@@ -30,5 +32,6 @@ jobs:
         run: make hygiene
       - name: Run all checks
         env:
-          BASE_REF: ${{ github.base_ref }}
+          # A merge group has no pull request, so it gives its base commit.
+          BASE_REV: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
         run: make ci-check
