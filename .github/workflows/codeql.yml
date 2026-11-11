@@ -5,6 +5,10 @@ on:
     branches: [main, dev]
   pull_request:
     branches: [main, dev]
+  # Code scanning default setup does not run on merge groups. The dev merge
+  # queue requires this workflow to report the CodeQL contexts.
+  merge_group:
+    types: [checks_requested]
   schedule:
     - cron: '23 4 * * 1'
 
