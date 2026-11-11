@@ -1,14 +1,15 @@
 """Validate the shared, repository-neutral parts of a pull request body."""
 
-import argparse
 import json
+import os
 import re
+import sys
 from pathlib import Path
 
 
 RELATED_ISSUES = "Related Issues"
 REQUIRED_SECTIONS = ("Summary", RELATED_ISSUES, "ADR Impact", "Test Plan")
-HEADING = re.compile(r"^## ([^\n]+)\s*$", re.MULTILINE)
+HEADING = re.compile(r"^## (.+)$", re.MULTILINE)
 
 
 def check_pr_body(body: str, author: str) -> list[str]:
@@ -36,15 +37,13 @@ def check_pr_body(body: str, author: str) -> list[str]:
 
 
 def main() -> None:
-    """Read GitHub's PR event and fail CI for an incomplete body."""
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--event", type=Path, required=True)
-    args = parser.parse_args()
-    event = json.loads(args.event.read_text(encoding="utf-8"))
+    """Read the PR event that GitHub names in GITHUB_EVENT_PATH and fail CI for an incomplete body."""
+    event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text(encoding="utf-8"))
     pull_request = event["pull_request"]
     failures = check_pr_body(pull_request.get("body") or "", pull_request["user"]["login"])
     if failures:
-        parser.exit(1, "\n".join(failures) + "\n")
+        sys.stderr.write("\n".join(failures) + "\n")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

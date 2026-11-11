@@ -32,7 +32,7 @@ jobs:
         run: make hygiene
       - name: Pull request body
         if: github.event_name == 'pull_request'
-        run: mise exec -- uv run --locked --no-build python scripts/check_pr_body.py --event "$GITHUB_EVENT_PATH"
+        run: mise exec -- uv run --locked --no-build python scripts/check_pr_body.py
       - name: Run all checks
         env:
           # A merge group has no pull request, so it gives its base commit.

@@ -2,6 +2,7 @@
 
 import io
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -52,14 +53,14 @@ class PullRequestBodyTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             event = Path(directory) / "event.json"
             event.write_text(json.dumps({"pull_request": {"body": VALID_BODY, "user": {"login": "contributor"}}}))
-            with patch.object(sys, "argv", ["check_pr_body.py", "--event", str(event)]):
+            with patch.dict(os.environ, {"GITHUB_EVENT_PATH": str(event)}):
                 main()
 
     def test_event_cli_rejects_missing_sections(self):
         with tempfile.TemporaryDirectory() as directory:
             event = Path(directory) / "event.json"
             event.write_text(json.dumps({"pull_request": {"body": "", "user": {"login": "contributor"}}}))
-            with patch.object(sys, "argv", ["check_pr_body.py", "--event", str(event)]):
+            with patch.dict(os.environ, {"GITHUB_EVENT_PATH": str(event)}):
                 with patch.object(sys, "stderr", io.StringIO()):
                     with self.assertRaises(SystemExit) as result:
                         main()
