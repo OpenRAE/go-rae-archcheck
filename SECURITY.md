@@ -2,7 +2,7 @@
 
 ## Report a vulnerability
 
-Do not report a suspected vulnerability in a public issue.
+Do not put the details of a suspected vulnerability in a public issue, pull request or discussion.
 Use the [private vulnerability reporting](https://github.com/OpenRAE/go-rae-archcheck/security/advisories/new) of this repository.
 If it is not available, email **security@autarchy.ai** with `go-rae-archcheck security report` in the subject.
 
