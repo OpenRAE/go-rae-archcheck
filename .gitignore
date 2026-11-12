@@ -1,2 +1,7 @@
 /.cache/
-/coverage.out
+/.venv/
+/.env
+/.gc/*
+!/.gc/plan_rules.md
+__pycache__/
+/.coverage

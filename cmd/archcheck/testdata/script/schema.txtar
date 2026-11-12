@@ -1,0 +1,51 @@
+# A model that breaks the schema fails at the JSON pointer of the value.
+exitcode 1 archcheck
+stderr '^architecture/model.yaml: model: the value at "/version" breaks the schema'
+stderr '^archcheck: 1 finding$'
+
+-- go.mod --
+module example.com/m
+
+go 1.27
+-- architecture/model.yaml --
+version: 2
+module: example.com/m
+system:
+  id: m
+  name: M
+  description: A system.
+people: []
+external_systems: []
+relationships: []
+containers:
+  - id: app
+    name: App
+    technology: Go
+    description: The application.
+layers:
+  - id: core
+    directory: internal/core
+    description: The core.
+    uses: []
+    external: []
+components: []
+test_modules: []
+rules:
+  - id: no-env
+    description: The core reads no environment variable.
+    scope:
+      layers: [core]
+      test_files: false
+    forbid_symbols: [os.Getenv]
+    fix: Pass the value in.
+-- architecture/designs/0001-start.md --
+---
+design: 1
+issue: 1
+title: Start
+---
+-- internal/core/core.go --
+package core
+
+// Name returns the name of the core.
+func Name() string { return "core" }

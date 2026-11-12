@@ -1,0 +1,77 @@
+name: PR title lint
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+    branches: [main, dev]
+  merge_group:
+    types: [checks_requested]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  lint-title:
+    name: Lint PR title
+    runs-on: ubuntu-latest
+    # Both steps use these rules.
+    env:
+      TITLE_TYPES: |
+        feat
+        fix
+        docs
+        chore
+        refactor
+        test
+        build
+        ci
+        perf
+        style
+        revert
+      TITLE_SUBJECT_PATTERN: ^[a-z].*$
+    steps:
+      - if: github.event_name == 'pull_request'
+        uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: ${{ env.TITLE_TYPES }}
+          requireScope: false
+          subjectPattern: ${{ env.TITLE_SUBJECT_PATTERN }}
+      # The action reads the pull request event, and a merge group event has no pull request.
+      # This step reads the current title of the queued pull request from the API. It applies the
+      # header patterns of the conventionalcommits parser preset that the action uses, then the
+      # same types and subject pattern. The title stays in a file and jq reads it. The messages
+      # do not show the title, because it is untrusted data.
+      - name: Lint the title of the queued pull request
+        if: github.event_name == 'merge_group'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          QUEUE_REF: ${{ github.event.merge_group.head_ref }}
+        run: |
+          set -euo pipefail
+          pattern='^refs/heads/gh-readonly-queue/dev/pr-([0-9]+)-[0-9a-f]{40}$'
+          if [[ ! "${QUEUE_REF}" =~ ${pattern} ]]; then
+            echo "The merge group ref is not a queued pull request for dev." >&2
+            exit 1
+          fi
+          gh api "repos/${GITHUB_REPOSITORY}/pulls/${BASH_REMATCH[1]}" > "${RUNNER_TEMP}/pull-request.json"
+          jq -er --arg types "${TITLE_TYPES}" --arg subject_pattern "${TITLE_SUBJECT_PATTERN}" '
+            def line: "[^\r\n\u2028\u2029]*";
+            def header($bang):
+              capture("\\A(?<type>[A-Za-z0-9_]*)(?:\\((?<scope>" + line + ")\\))?" + $bang
+                + ": (?<subject>" + line + ")\\z");
+            if .base.ref != "dev" then error("The queued pull request does not target dev.") else . end
+            | ($types | split("\n") | map(sub("^\\s+"; "") | sub("\\s+$"; "")) | map(select(. != "")))
+              as $allowed
+            | (.title | header("!") // header("!?") // {}) as $parts
+            | if ($parts.type // "") == "" then error("The title has no type.")
+              elif ($parts.subject // "") == "" then error("The title has no subject.")
+              elif ($allowed | any(. == $parts.type) | not) then error("The title type \"\($parts.type)\" is not one of: \($allowed | join(", ")).")
+              elif ([$parts.subject | match($subject_pattern)] | first | .length)
+                != ($parts.subject | length)
+              then error("The title subject does not match \"\($subject_pattern)\".")
+              else "The title of pull request #\(.number) is valid."
+              end
+          ' "${RUNNER_TEMP}/pull-request.json"

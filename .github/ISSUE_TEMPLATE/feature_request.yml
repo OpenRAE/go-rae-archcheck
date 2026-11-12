@@ -1,0 +1,18 @@
+name: Feature request
+description: Propose a generic capability of the checker.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: Need
+      description: The architecture rule or check that you need, in generic terms.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome
+      description: The behavior that meets the need.
+    validations:
+      required: true

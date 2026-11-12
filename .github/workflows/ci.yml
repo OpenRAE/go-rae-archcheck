@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+    branches: [main, dev]
+  merge_group:
+    types: [checks_requested]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install pinned tools
+        uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        with:
+          version: 2026.10.0
+          install: false
+      - run: make tools
+      - name: File hygiene, workflow and secret checks
+        run: make hygiene
+      - name: Pull request body
+        if: github.event_name == 'pull_request'
+        run: mise exec -- uv run --locked --no-build python scripts/check_pr_body.py
+      - name: Run all checks
+        env:
+          # A merge group has no pull request, so it gives its base commit.
+          BASE_REV: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+        run: make ci-check
+      - name: Keep the coverage profile for SonarCloud
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage
+          path: |
+            .cache/coverage.out
+            .cache/python-coverage.xml
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
+  # Holds SONAR_TOKEN, so it runs no repository commands.
+  # Pull requests from other repositories get no credentials, so they skip this job.
+  sonar:
+    name: SonarCloud
+    needs: check
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: coverage
+          path: .cache
+      - name: Analyze and wait for the quality gate
+        uses: SonarSource/sonarqube-scan-action@4d1dc0c91ee400dcf8a6dddf2f705ac36542e304 # v8.4.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: -Dsonar.qualitygate.wait=true

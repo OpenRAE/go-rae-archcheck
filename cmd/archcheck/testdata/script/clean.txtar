@@ -1,0 +1,51 @@
+# A module that meets its model has no findings, and the command succeeds.
+exitcode 0 archcheck
+stdout '^archcheck: no findings$'
+! stderr .
+
+-- go.mod --
+module example.com/m
+
+go 1.27
+-- architecture/model.yaml --
+version: 1
+module: example.com/m
+system:
+  id: m
+  name: M
+  description: A system.
+people: []
+external_systems: []
+relationships: []
+containers:
+  - id: app
+    name: App
+    technology: Go
+    description: The application.
+layers:
+  - id: core
+    directory: internal/core
+    description: The core.
+    uses: []
+    external: []
+components: []
+test_modules: []
+rules:
+  - id: no-env
+    description: The core reads no environment variable.
+    scope:
+      layers: [core]
+      test_files: false
+    forbid_symbols: [os.Getenv]
+    fix: Pass the value in.
+-- architecture/designs/0001-start.md --
+---
+design: 1
+issue: 1
+title: Start
+---
+-- internal/core/core.go --
+package core
+
+// Name returns the name of the core.
+func Name() string { return "core" }
