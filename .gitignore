@@ -5,3 +5,5 @@
 !/.gc/plan_rules.md
 __pycache__/
 /.coverage
+# Phase E downloads the finalizer archive here before npm ci.
+/.github/ground-control/*.tgz

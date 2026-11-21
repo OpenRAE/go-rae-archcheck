@@ -59,7 +59,11 @@ You review and merge the pull request after the checks pass.
 
 Pull requests to `dev` merge through the merge queue.
 The queue merges a pull request only when each required check passes on its merge group.
+When the queue removes a pull request without a merge, the pull request gets the `merge-queue-removed` label.
 After the merge, the `Ground Control Phase E` workflow records the outcome and closes the issue.
+The workflow downloads a checksum-verified `v1.12.1` archive from the private `autarchy-ai/Ground-Control` release.
+The lockfile in `.github/ground-control` pins that archive and each dependency.
+The repository secret `GROUND_CONTROL_READ_TOKEN` must hold a token with read-only contents access to that repository.
 
 CI also runs these Ground Control gates:
 

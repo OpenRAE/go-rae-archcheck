@@ -3,6 +3,6 @@
   "private": true,
   "description": "The locked Ground Control finalizer for the Phase E workflow.",
   "dependencies": {
-    "grndctl": "1.2.1"
+    "grndctl": "file:grndctl-1.12.1.tgz"
   }
 }

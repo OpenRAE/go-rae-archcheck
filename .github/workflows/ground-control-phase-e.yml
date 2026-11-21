@@ -3,20 +3,10 @@ name: Ground Control Phase E
 # `pull_requests` association — is still bound to what it finalized (issue #1671).
 run-name: Ground Control Phase E for PR ${{ github.event.pull_request.number || inputs.pr }}
 
-# A merged Ground Control delivery pull request finishes Phase E here, with no model or
-# agent session. The agent records a trusted delivery-readiness handoff at Phase D and may
-# then terminate permanently; this job is a trigger and a transport.
-#
-# It holds no `gh` logic, no marker parser, and no completion reconstruction. It passes the
-# event's pull-request number to `grndctl finalize-merged-pr`, which resolves the issue from
-# the trusted pointer and replays the recorded payload through the incumbent finalizer — so
-# the merge gate, the immutable merged-revision requirement verification, the final-report
-# marker, and the idempotent close all still apply, unchanged.
-#
-# It runs no tests, no policy suite, and no review, and it waits for no other post-merge job.
-#
-# Written by `grndctl init`. The lockfile in .github/ground-control pins the grndctl
-# version. Change it on purpose, not by a moving tag.
+# Finalize the merged delivery from immutable Git evidence. The helper comes from
+# the private Ground-Control release. Verify its fixed checksum before installation.
+# Only the download receives the read-only release token; finalization uses the
+# job token. Repository scripts never run with either token.
 
 on:
   pull_request:
@@ -60,7 +50,15 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
-      # The lockfile in .github/ground-control pins grndctl and its dependencies.
+      # Only this step receives the read-only release token.
+      - name: Download the pinned private finalizer
+        working-directory: .github/ground-control
+        env:
+          GH_TOKEN: ${{ secrets.GROUND_CONTROL_READ_TOKEN }}
+        run: |
+          gh release download v1.12.1 --repo autarchy-ai/Ground-Control --pattern grndctl-1.12.1.tgz
+          printf '%s  %s\n' '67ea8493b7d0dbeb097078f5ec15a91c7a8fb1efd69d30657327dc983cdf0585' grndctl-1.12.1.tgz | sha256sum --check --strict
+      # The lockfile in .github/ground-control pins the archive and every dependency.
       # npm ci installs exactly that tree and runs no package scripts.
       - name: Install the locked finalizer
         working-directory: .github/ground-control
